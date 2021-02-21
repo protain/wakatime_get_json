@@ -37,22 +37,33 @@ async fn main() -> anyhow::Result<()> {
 
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.len() >= 1 {
-        let tmp_dt_0 = chrono::NaiveDateTime::parse_from_str(&format!("{} 00:00", args[0]), "%Y/%m/%d %H:%M")?;
-        dt_start = Local.from_local_datetime(&tmp_dt_0).unwrap();
+        if let Ok(tmp_dt_0) = chrono::NaiveDateTime::parse_from_str(&format!("{} 00:00", args[0]), "%Y/%m/%d %H:%M") {
+            dt_start = Local.from_local_datetime(&tmp_dt_0).unwrap();
+        }
         if args.len() >= 2 {
-            let tmp_dt_1 = chrono::NaiveDateTime::parse_from_str(&format!("{} 00:00", &args[1]), "%Y/%m/%d %H:%M")?;
-            dt_end = Local.from_local_datetime(&tmp_dt_1).unwrap();
+            if let Ok(tmp_dt_1) = chrono::NaiveDateTime::parse_from_str(&format!("{} 00:00", &args[1]), "%Y/%m/%d %H:%M") {
+                dt_end = Local.from_local_datetime(&tmp_dt_1).unwrap();
+            }
         }
     }
-    if args.len() >= 3 {
-        save_file = args[2] == "save_file";
+    for a in args {
+        save_file = a == "save_file";
     }
     let body = request_wakatime(
         &dt_start.format("%Y-%m-%d").to_string(),
         &dt_end.format("%Y-%m-%d").to_string()).await;
     if let Ok(body_text) = body {
         if save_file {
-            let mut f = std::fs::File::create(format!("res_{}-{}", dt_start.format("%Y%m%d"), dt_end.format("%Y%m%d")))?;
+            let str_dt_start = dt_start.format("%Y%m%d").to_string();
+            let str_dt_end = dt_end.format("%Y%m%d").to_string();
+            let file_name: String;
+            if str_dt_start == str_dt_end {
+                file_name = format!("res_{}", str_dt_start);
+            }
+            else {
+                file_name = format!("res_{}-{}", str_dt_start, str_dt_end);
+            }
+            let mut f = std::fs::File::create(file_name)?;
             if let Err(e) = f.write(body_text.as_bytes()) {
                 println!("error! : {:?}", e);
             }
