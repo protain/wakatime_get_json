@@ -1,0 +1,5 @@
+# このファイルは Settings.toml としてコピーして使ってください。
+# see also: https://wakatime.com/developers/#authentication
+secret-api-key = "ここにwakatimeのAPI-KEYを設定してください。"
+api-id = "ここに使用するAPIのIDを設定してください。"
+api-secret = "ここに使用するAPIの秘密キーを設定してください。"

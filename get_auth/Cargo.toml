@@ -1,0 +1,14 @@
+[package]
+name = "wakatime_get_json"
+version = "0.1.0"
+authors = ["Ryuta Hayashi <ryuta.hayashi@fujifilm.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1"
+oauth2 = { version = "3" }
+url = "2.2"
+config = "0.10"
+once_cell = "1.5"

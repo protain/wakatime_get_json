@@ -1,0 +1,63 @@
+{
+    // IntelliSense を使用して利用可能な属性を学べます。
+    // 既存の属性の説明をホバーして表示します。
+    // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'get_summary'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=get_summary",
+                    "--package=get_summary"
+                ],
+                "filter": {
+                    "name": "get_summary",
+                    "kind": "bin"
+                }
+            },
+            "args": [ "2021/02/10", "2021/02/20", "save_file" ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'wakatime_get_json'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=wakatime_get_json",
+                    "--package=wakatime_get_json"
+                ],
+                "filter": {
+                    "name": "wakatime_get_json",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'wakatime_get_json'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=wakatime_get_json",
+                    "--package=wakatime_get_json"
+                ],
+                "filter": {
+                    "name": "wakatime_get_json",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
