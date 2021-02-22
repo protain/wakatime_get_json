@@ -58,10 +58,10 @@ async fn main() -> anyhow::Result<()> {
             let str_dt_end = dt_end.format("%Y%m%d").to_string();
             let file_name: String;
             if str_dt_start == str_dt_end {
-                file_name = format!("res_{}", str_dt_start);
+                file_name = format!("res_{}.json", str_dt_start);
             }
             else {
-                file_name = format!("res_{}-{}", str_dt_start, str_dt_end);
+                file_name = format!("res_{}-{}.json", str_dt_start, str_dt_end);
             }
             let mut f = std::fs::File::create(file_name)?;
             if let Err(e) = f.write(body_text.as_bytes()) {
