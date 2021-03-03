@@ -1,9 +1,11 @@
-use std::io::Write;
+use std::{collections::HashMap, io::Write};
 
 use chrono::{Local, TimeZone};
+use get_summary::url_encode::{encode};
 use reqwest::{self, StatusCode};
 use once_cell::sync::Lazy;
 use config::{Config};
+use serde::{Serialize, Deserialize};
 
 static SETTINGS: Lazy<Config> = Lazy::new(|| {
     let mut settings = Config::default();
@@ -11,12 +13,136 @@ static SETTINGS: Lazy<Config> = Lazy::new(|| {
     settings
 });
 
-async fn request_wakatime(start: &str, end: &str) -> anyhow::Result<String> {
+#[derive(Debug, Deserialize, Serialize)]
+struct SummariesDetail {
+    digital: String,
+    hours: i32,
+    minutes: i32,
+    #[serde(default)]
+    seconds: i32,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    percent: f32,
+    text: String,
+    total_seconds: f32,
+    machine_name_id: Option<String>
+}
+
+impl Default for SummariesDetail {
+    fn default() -> Self {
+        SummariesDetail {
+            digital: "".into(),
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+            name: "".into(),
+            percent: 0.0,
+            text: "".into(),
+            total_seconds: 0.0,
+            machine_name_id: Some("".into()),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct RangeData {
+    date: String,
+    start: String,
+    end: String,
+    text: String,
+    timezone: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct SummariesData {
+    #[serde(default)]
+    branches: Vec<SummariesDetail>,
+    #[serde(default)]
+    entities: Vec<SummariesDetail>,
+    categories: Vec<SummariesDetail>,
+    dependencies: Vec<SummariesDetail>,
+    editors: Vec<SummariesDetail>,
+    languages: Vec<SummariesDetail>,
+    machines: Vec<SummariesDetail>,
+    #[serde(default)]
+    operating_system: Vec<SummariesDetail>,
+    #[serde(default)]
+    projects: Vec<SummariesDetail>,
+    grand_total: SummariesDetail,
+    range: RangeData,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Summaries {
+    data: Vec<SummariesData>,
+    start: String,
+    end: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct SummariesAll {
+    summaries: Summaries,
+    projects: HashMap<String, Summaries>,
+}
+
+/*
+    waka time json schema
+
+    summaries_detail := {
+        digital: string
+        hours: i32
+        minutes: i32
+        name: Option<string>
+        percent: f32
+        seconds: i32
+        text: string
+        total_seconds: f32
+        machine_name_id: Option<string>     // exists machines only
+    }
+
+    sumaries_data := {
+        branches: Option<[ <summaries_detail> ]>    // exists project_summaries only
+        entities: Option<[ <summaries_detail> ]>    // exists project_summaries only
+        categories: [ <summaries_detail> ]
+        dependencies: [ <summaries_detail> ]
+        editors: [ <summaries_detail> ]
+        languages: [ <summaries_detail> ]
+        machines: [ <summaries_detail> ]
+        operating_system: [ <summaries_detail> ]
+        projects: [ <summaries_detail> ]
+        grand_total: <summaries_detail>
+        range: {
+            date: <date string>
+            start: <datetime string>
+            end: <datetime string>
+            text: <string>
+            timezone: <string>
+        }
+    }
+
+    summaries := {
+        data: [ <summaries_data> ]
+        start: <datetime string>
+        end: <datetime string>
+    }
+
+    // start, end, project
+    project_summaries := {
+        data: [ <summaries_data> ]
+        start: <datetime string>
+        end: <datetime string>
+    }
+
+    datetime string := "YYYY'-'MM'-'DD'T'HH':'mi':'ss'Z'"    // e.g. 2021-02-22T14:59:59Z
+*/
+
+async fn request_wakatime(start: &str, end: &str) -> anyhow::Result<Summaries> {
     // get the key from Settings.toml
     let sct_api_key = SETTINGS.get_str("secret-api-key")?;
     let client = reqwest::Client::new();
 
-    let req_url = format!("https://wakatime.com/api/v1/users/current/summaries?start={}&end={}", start, end);
+    let req_url = format!("https://wakatime.com/api/v1/users/current/summaries?start={}&end={}", encode(start), encode(end));
     let res = client.get(&req_url)
         .header("Authorization", format!("Basic {}", base64::encode(sct_api_key)))
         .send()
@@ -25,8 +151,27 @@ async fn request_wakatime(start: &str, end: &str) -> anyhow::Result<String> {
         return Err(anyhow::anyhow!(format!("bad request => status code: {}", res.status())));
     }
     let body = res.text().await?;
+    let summaries: Summaries = serde_json::from_str(&body)?;
 
-    Ok(body)
+    Ok(summaries)
+}
+
+async fn request_project_summary(start: &str, end: &str, proj_name: &str) -> anyhow::Result<Summaries> {
+    let sct_api_key = SETTINGS.get_str("secret-api-key")?;
+    let client = reqwest::Client::new();
+
+    let req_url = format!("https://wakatime.com/api/v1/users/current/summaries?start={}&end={}&project={}", encode(start), encode(end), encode(proj_name));
+    let res = client.get(&req_url)
+        .header("Authorization", format!("Basic {}", base64::encode(sct_api_key)))
+        .send()
+        .await?;
+    if res.status() != StatusCode::OK {
+        return Err(anyhow::anyhow!(format!("bad request => status code: {}", res.status())));
+    }
+    let body = res.text().await?;
+    let summaries: Summaries = serde_json::from_str(&body)?;
+
+    Ok(summaries)
 }
 
 #[tokio::main]
@@ -49,31 +194,41 @@ async fn main() -> anyhow::Result<()> {
     for a in args {
         save_file = a == "save_file";
     }
-    let body = request_wakatime(
+    let summary = request_wakatime(
         &dt_start.format("%Y-%m-%d").to_string(),
-        &dt_end.format("%Y-%m-%d").to_string()).await;
-    if let Ok(body_text) = body {
-        if save_file {
-            let str_dt_start = dt_start.format("%Y%m%d").to_string();
-            let str_dt_end = dt_end.format("%Y%m%d").to_string();
-            let file_name: String;
-            if str_dt_start == str_dt_end {
-                file_name = format!("res_{}.json", str_dt_start);
-            }
-            else {
-                file_name = format!("res_{}-{}.json", str_dt_start, str_dt_end);
-            }
-            let mut f = std::fs::File::create(file_name)?;
-            if let Err(e) = f.write(body_text.as_bytes()) {
-                println!("error! : {:?}", e);
-            }
+        &dt_end.format("%Y-%m-%d").to_string()).await?;
+    let mut proj_summary: HashMap<String, Summaries> = HashMap::new();
+    for dat in &summary.data[0].projects {
+        let proj = request_project_summary(
+            &dt_start.format("%Y-%m-%d").to_string(),
+            &dt_end.format("%Y-%m-%d").to_string(),
+            &dat.name).await?;
+        proj_summary.insert(dat.name.clone(), proj);
+    }
+
+    let summary_all = SummariesAll {
+        summaries: summary,
+        projects: proj_summary
+    };
+    
+    if save_file {
+        let str_dt_start = dt_start.format("%Y%m%d").to_string();
+        let str_dt_end = dt_end.format("%Y%m%d").to_string();
+        let file_name: String;
+        if str_dt_start == str_dt_end {
+            file_name = format!("res_{}.json", str_dt_start);
         }
         else {
-            println!("{}", body_text);
+            file_name = format!("res_{}-{}.json", str_dt_start, str_dt_end);
+        }
+        let mut f = std::fs::File::create(file_name)?;
+        let body_txt = serde_json::to_string_pretty(&summary_all)?;
+        if let Err(e) = f.write(body_txt.as_bytes()) {
+            println!("error! : {:?}", e);
         }
     }
     else {
-        println!("error! : {:?}", body);
+        println!("error! : {:?}", summary_all);
     }
 
     Ok(())

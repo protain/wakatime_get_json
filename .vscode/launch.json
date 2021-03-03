@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [ "2021/02/10", "2021/02/20", "save_file" ],
+            "args": [ "save_file" ],
             "cwd": "${workspaceFolder}"
         },
         {
