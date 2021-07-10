@@ -1,5 +1,2 @@
 [workspace]
-members = [
-    "get_auth",
-    "get_summary"
-]
+members = ["get_auth", "get_summary", "bulk_regist"]
