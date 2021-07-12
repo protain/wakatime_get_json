@@ -94,6 +94,7 @@ async fn register_wakatime(date: &str, summary: &SummariesAll) -> Result<()> {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let mut dt_end = chrono::Local::now();
+    dt_end = dt_end - chrono::Duration::days(1);
     let mut dt_start = dt_end;
     let mut save_file = false;
 
