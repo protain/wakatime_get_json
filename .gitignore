@@ -2,3 +2,5 @@
 Cargo.lock
 *secret*
 Settings.toml
+.env
+dist/

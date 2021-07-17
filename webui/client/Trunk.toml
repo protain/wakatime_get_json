@@ -1,0 +1,14 @@
+[build]
+target = "static/index.html"
+dist = "dist"
+
+[watch]
+path = ["src", "static"]
+ignore = []
+
+[clean]
+dist = "dist"
+cargo = false
+
+[[proxy]]
+backend = "http://localhost:5005/"

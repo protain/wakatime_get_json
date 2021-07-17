@@ -1,2 +1,2 @@
 [workspace]
-members = ["get_auth", "get_summary", "bulk_regist"]
+members = ["get_auth", "get_summary", "bulk_regist", "webui/server", "webui/client"]
