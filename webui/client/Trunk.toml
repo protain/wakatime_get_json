@@ -11,4 +11,4 @@ dist = "dist"
 cargo = false
 
 [[proxy]]
-backend = "http://localhost:5005/"
+backend = "http://localhost:5005/api/"

@@ -23,9 +23,9 @@ impl RankingItem {
     ) -> anyhow::Result<Vec<RankingItem>, sqlx::Error> {
         let res = sqlx::query_as::<_, RankingItem>(
             r#"
-select title, (sum(total_seconds) / 3600) hours from
+select title#>>'{}' as title, (sum(total_seconds) / 3600) hours from
     (select
-        jsonb_path_query(w.data, '$.summaries.data.editors.name')::Text title,
+        jsonb_path_query(w.data, '$.summaries.data.editors.name') title,
         jsonb_path_query(w.data, '$.summaries.data.editors.total_seconds')::double precision total_seconds
     from wakatime_dat w
     where w.date >= $1 and w.date <= $2
@@ -48,9 +48,9 @@ order by hours desc
     ) -> anyhow::Result<Vec<RankingItem>, sqlx::Error> {
         let res = sqlx::query_as::<_, RankingItem>(
             r#"
-select title, (sum(total_seconds) / 3600) hours from
+select title#>>'{}' as title, (sum(total_seconds) / 3600) hours from
     (select
-        jsonb_path_query(w.data, '$.summaries.data.languages.name')::Text title,
+        jsonb_path_query(w.data, '$.summaries.data.languages.name') title,
         jsonb_path_query(w.data, '$.summaries.data.languages.total_seconds')::double precision total_seconds
     from wakatime_dat w
     where w.date >= $1 and w.date <= $2
@@ -73,9 +73,9 @@ order by hours desc
     ) -> anyhow::Result<Vec<RankingItem>, sqlx::Error> {
         let res = sqlx::query_as::<_, RankingItem>(
             r#"
-select title, (sum(total_seconds) / 3600) hours from
+select title#>>'{}' as title, (sum(total_seconds) / 3600) hours from
     (select
-        jsonb_path_query(w.data, '$.summaries.data.projects.name')::Text title,
+        jsonb_path_query(w.data, '$.summaries.data.projects.name') title,
         jsonb_path_query(w.data, '$.summaries.data.projects.total_seconds')::double precision total_seconds
     from wakatime_dat w
     where w.date >= $1 and w.date <= $2
@@ -127,7 +127,7 @@ async fn main() -> anyhow::Result<()> {
         .connect(&database_url)
         .await?;
     rocket::build()
-        .mount("/", routes![editors, langs, projects])
+        .mount("/api", routes![editors, langs, projects])
         .manage(pool)
         .configure(Config {
             port: 5005,

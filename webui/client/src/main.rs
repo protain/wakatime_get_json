@@ -5,9 +5,9 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 use console_error_panic_hook::set_once as set_panic_hook;
 use wasm_bindgen::prelude::*;
-use yew::prelude::*;
-#[cfg(feature = "demo-abc")]
+use web_sys::Element;
 use yew::services::ConsoleService;
+use yew::{prelude::*, services::interval::IntervalTask};
 use yew_router::{route::Route, switch::Permissive};
 mod switch;
 use switch::{AppAnchor, AppRoute, AppRouter, PublicUrlSwitch};
@@ -25,10 +25,13 @@ pub struct App {
 }
 
 impl Component for App {
-    type Message = ();
+    type Message = Msg;
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+        unsafe {
+            crate::hide_loading();
+        }
         Self {
             link,
             navbar_active: false,
@@ -49,7 +52,16 @@ impl Component for App {
                 {self.view_nav()}
                 <main>
                     <AppRouter
-                        render=AppRouter::render(Self::switch)
+                        render=AppRouter::render(/*move |switch: PublicUrlSwitch| -> Html {
+                            match switch.route() {
+                                _ => {}
+                            }
+                            html! {
+                                <div
+                                    onclick=self.link.callback(|_| Msg::ToggleNavbar)
+                                >{ "ああああa" }</div>
+                            }
+                        }*/Self::switch)
                         redirect=AppRouter::redirect(|route: Route| {
                             AppRoute::PageNotFound(Permissive(Some(route.route))).into_public()
                         })
@@ -110,18 +122,21 @@ impl App {
                 html! { <SummaryGraph id=id /> }
             }
             AppRoute::PostListPage(_) => todo!(),
-            AppRoute::PostList => todo!(),
+            AppRoute::PostList => {
+                html! { <SummaryGraph id=1 /> }
+            }
             AppRoute::Author(_) => todo!(),
-            AppRoute::AuthorList => todo!(),
+            AppRoute::AuthorList => {
+                // リダイレクトする場合はweb-sys使う
+                let window = web_sys::window().expect("no window find");
+                window.location().set_href("https://www.google.co.jp");
+                html! {}
+            }
             AppRoute::PageNotFound(_) => {
                 html! { <div>{ "ページがみつかりませーん" }</div> }
             }
             AppRoute::Home => {
                 html! {
-                    <>
-                    <div class="box">
-                        { "This text is <em>not</em> within a <strong>block</strong>." }
-                    </div>
                     <div class="card">
                         <form class="card-content">
                         <div class="field">
@@ -141,22 +156,33 @@ impl App {
                         <button class="button is-primary">{ "Sign in" }</button>
                         </form>
                     </div>
-                    </>
                 }
             }
         }
     }
 }
 
-#[wasm_bindgen(inline_js = "export function snippetTest() { console.log('Hello from JS FFI!'); }")]
+#[wasm_bindgen(inline_js = r#"
+export function hide_loading() {
+    const spinner = document.getElementById('loading');
+    spinner.classList.add('loaded');
+}
+export function show_loading() {
+    const spinner = document.getElementById('loading');
+    spinner.classList.remove('loaded');
+}
+"#)]
 extern "C" {
-    fn snippetTest();
+    pub fn show_loading();
+    pub fn hide_loading();
 }
 
 fn main() {
     set_panic_hook();
     unsafe {
-        snippetTest();
+        ConsoleService::log("hide loading start");
+        hide_loading();
+        ConsoleService::log("hide loading end");
     }
 
     // Show off some feature flag enabling patterns.
@@ -169,5 +195,11 @@ fn main() {
         ConsoleService::log("feature `demo-xyz` enabled");
     }
 
-    yew::start_app::<App>();
+    let element: Element = yew::utils::document()
+        .query_selector("#app")
+        .expect("can't get body node for rendering")
+        .expect("can't unwrap body node");
+    let app = yew::App::<App>::new();
+    app.mount(element);
+    //yew::start_app::<App>();
 }

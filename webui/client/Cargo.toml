@@ -12,7 +12,23 @@ wee_alloc = "0.4"
 #ybc = { git = "https://github.com/thedodd/ybc" }
 yew = "0.18"
 yew-router = "0.15"
+yew-components = "*"
 anyhow = "1"
+plotters = "0.3"
+chrono = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_derive = "1"
+serde_json = "1"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  'Document',
+  'Element',
+  'HtmlElement',
+  'Node',
+  'Window',
+]
 
 [features]
 default = []

@@ -10,8 +10,19 @@
     <link data-trunk rel="scss" data-inline href="inline-scss.scss"/>
     <link data-trunk rel="css" href="app.css"/>
     <base data-trunk-public-url/>
+    <script>
+        window.onload = function() {
+    //const spinner = document.getElementById('loading');
+    //spinner.classList.add('loaded');
+        }
+    </script>
 </head>
 <body>
+    <!-- ローディング画面 -->
+    <div id="loading">
+        <div class="spinner"></div>
+    </div>
     <link data-trunk rel="rust" href="../Cargo.toml" data-cargo-features="demo-abc,demo-xyz"/>
+    <div id="app"></div>
 </body>
 </html>
