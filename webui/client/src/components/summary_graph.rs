@@ -252,7 +252,7 @@ impl SummaryGraph {
                         html! {
                             <tr>
                                 <td>{ &row.title }</td>
-                                <td>{ row.hours }</td>
+                                <td>{ format!("{:.2} 時間", row.hours) }</td>
                             </tr>
                         }
 

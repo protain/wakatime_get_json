@@ -6,8 +6,8 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 use console_error_panic_hook::set_once as set_panic_hook;
 use wasm_bindgen::prelude::*;
 use web_sys::Element;
+use yew::prelude::*;
 use yew::services::ConsoleService;
-use yew::{prelude::*, services::interval::IntervalTask};
 use yew_router::{route::Route, switch::Permissive};
 mod switch;
 use switch::{AppAnchor, AppRoute, AppRouter, PublicUrlSwitch};
@@ -129,7 +129,7 @@ impl App {
             AppRoute::AuthorList => {
                 // リダイレクトする場合はweb-sys使う
                 let window = web_sys::window().expect("no window find");
-                window.location().set_href("https://www.google.co.jp");
+                let _ = window.location().set_href("https://www.google.co.jp");
                 html! {}
             }
             AppRoute::PageNotFound(_) => {

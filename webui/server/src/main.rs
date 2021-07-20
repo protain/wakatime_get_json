@@ -1,13 +1,33 @@
 #[macro_use]
 extern crate rocket;
-use rocket::{http::Status, Config, State};
+use rocket::{
+    fs::NamedFile,
+    http::{ContentType, Status},
+    response::content::Custom,
+    Config, Response, State,
+};
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
-use core::f64;
-use std::env;
+use std::{borrow::Cow, collections::HashMap, env, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 use serde_json;
+
+use once_cell::sync::Lazy;
+use rust_embed::RustEmbed;
+
+#[derive(RustEmbed)]
+#[folder = "../client/dist"]
+struct Asset;
+
+static ASSET_FILES: Lazy<HashMap<Cow<str>, Option<()>>> = Lazy::new(|| {
+    let mut files = HashMap::new();
+    Asset::iter().for_each(|v| {
+        println!("file: {}", &v);
+        files.insert(v.to_owned(), None);
+    });
+    files
+});
 
 #[derive(Debug, Deserialize, Serialize, sqlx::FromRow)]
 struct RankingItem {
@@ -119,6 +139,35 @@ async fn projects(pool: &State<Pool<Postgres>>, from: &str, to: &str) -> Result<
     }
 }
 
+#[get("/<filename..>")]
+async fn statics(filename: PathBuf) -> Result<Custom<Vec<u8>>, Status> {
+    let fpath = filename.to_str().unwrap();
+    if !ASSET_FILES.contains_key(fpath) {
+        return Err(Status::NotFound);
+    }
+    let dat: Vec<u8> = Asset::get(fpath).unwrap().into();
+    let content_type = match filename
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .split(".")
+        .last()
+        .unwrap()
+    {
+        "html" => ContentType::HTML,
+        "js" => ContentType::JavaScript,
+        "css" => ContentType::CSS,
+        "jpg" => ContentType::JPEG,
+        "png" => ContentType::PNG,
+        "ico" => ContentType::Icon,
+        _ => ContentType::Plain,
+    };
+    let d = Custom(content_type, dat);
+    Ok(d)
+    //Ok(dat)
+}
+
 #[rocket::main]
 async fn main() -> anyhow::Result<()> {
     let database_url = env::var("DATABASE_URL")?;
@@ -128,6 +177,7 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     rocket::build()
         .mount("/api", routes![editors, langs, projects])
+        .mount("/", routes![statics])
         .manage(pool)
         .configure(Config {
             port: 5005,
