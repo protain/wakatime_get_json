@@ -52,16 +52,7 @@ impl Component for App {
                 {self.view_nav()}
                 <main>
                     <AppRouter
-                        render=AppRouter::render(/*move |switch: PublicUrlSwitch| -> Html {
-                            match switch.route() {
-                                _ => {}
-                            }
-                            html! {
-                                <div
-                                    onclick=self.link.callback(|_| Msg::ToggleNavbar)
-                                >{ "ああああa" }</div>
-                            }
-                        }*/Self::switch)
+                        render=AppRouter::render(Self::switch)
                         redirect=AppRouter::redirect(|route: Route| {
                             AppRoute::PageNotFound(Permissive(Some(route.route))).into_public()
                         })
@@ -96,17 +87,17 @@ impl App {
                             { "ホーム" }
                         </AppAnchor>
                         <AppAnchor classes="navbar-item" route=AppRoute::PostList>
-                            { "投稿" }
+                            { "サマリー表示" }
                         </AppAnchor>
 
                         <div class="navbar-item has-dropdown is-hoverable">
                             <a class="navbar-link">
-                                { "もっと" }
+                                { "その他" }
                             </a>
                             <div class="navbar-dropdown">
                                 <a class="navbar-item">
-                                    <AppAnchor classes="navbar-item" route=AppRoute::AuthorList>
-                                    { "制作者に合う" }
+                                    <AppAnchor classes="navbar-item" route=AppRoute::VersionInfo>
+                                    { "バージョン情報" }
                                     </AppAnchor>
                                 </a>
                             </div>
@@ -125,20 +116,19 @@ impl App {
             AppRoute::PostList => {
                 html! { <SummaryGraph id=1 /> }
             }
-            AppRoute::Author(_) => todo!(),
-            AppRoute::AuthorList => {
+            AppRoute::VersionInfo => {
                 // リダイレクトする場合はweb-sys使う
                 let window = web_sys::window().expect("no window find");
                 let _ = window.location().set_href("https://www.google.co.jp");
                 html! {}
             }
             AppRoute::PageNotFound(_) => {
-                html! { <div>{ "ページがみつかりませーん" }</div> }
+                html! { <div>{ "該当するページが見つかりません。" }</div> }
             }
             AppRoute::Home => {
                 html! {
                     <div class="card">
-                        <form class="card-content">
+                        <div class="card-content">
                         <div class="field">
                             <label class="label">{ "Email" }</label>
                             <div class="control">
@@ -154,7 +144,7 @@ impl App {
                         </div>
 
                         <button class="button is-primary">{ "Sign in" }</button>
-                        </form>
+                        </div>
                     </div>
                 }
             }

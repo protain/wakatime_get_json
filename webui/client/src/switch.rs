@@ -9,10 +9,8 @@ pub enum AppRoute {
     PostListPage(u64),
     #[to = "/posts/"]
     PostList,
-    #[to = "/authors/{id}"]
-    Author(u64),
     #[to = "/authors/"]
-    AuthorList,
+    VersionInfo,
     #[to = "/page-not-found"]
     PageNotFound(Permissive<String>),
     #[to = "/!"]
