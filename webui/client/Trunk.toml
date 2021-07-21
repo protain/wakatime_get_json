@@ -1,6 +1,7 @@
 [build]
 target = "static/index.html"
 dist = "dist"
+public_url = "/wakalog/"
 
 [watch]
 path = ["src", "static"]

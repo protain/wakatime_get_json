@@ -170,16 +170,33 @@ async fn statics(filename: PathBuf) -> Result<Custom<Vec<u8>>, Status> {
     //Ok(dat)
 }
 
+#[catch(404)]
+fn index() -> Custom<Vec<u8>> {
+    let dat: Vec<u8> = Asset::get("index.html").unwrap().into();
+    Custom(ContentType::HTML, dat)
+}
+
 #[rocket::main]
 async fn main() -> anyhow::Result<()> {
+    dotenv::dotenv().ok();
     let database_url = env::var("DATABASE_URL")?;
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)
         .await?;
+    let prefix = match env::var("PREFIX") {
+        Ok(pfx) => pfx,
+        Err(_) => "".into(),
+    };
+
+    println!("prefix={}", prefix);
     rocket::build()
-        .mount("/api", routes![editors, langs, projects])
-        .mount("/", routes![statics])
+        .mount(
+            format!("/{}api", &prefix),
+            routes![editors, langs, projects],
+        )
+        .mount(format!("/{}", &prefix), routes![statics])
+        .register(format!("/{}", &prefix), catchers![index])
         .manage(pool)
         .configure(Config {
             port: 5005,

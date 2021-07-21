@@ -98,7 +98,7 @@ impl Component for SummaryGraph {
                     ItemType::Projects => "projects",
                 };
                 let get_request = Request::get(&format!(
-                    "/api/{}/{}/{}",
+                    "/wakalog/api/{}/{}/{}",
                     item_type, self.start_date, self.end_date
                 ))
                 .body(Nothing)
