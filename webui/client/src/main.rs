@@ -34,7 +34,7 @@ impl Component for App {
         }
         Self {
             link,
-            navbar_active: false,
+            navbar_active: true,
         }
     }
 
@@ -108,6 +108,7 @@ impl App {
         }
     }
     fn switch(switch: PublicUrlSwitch) -> Html {
+        ConsoleService::info(&format!("AppRoute::switch: {:?}", &switch));
         match switch.route() {
             AppRoute::Post(id) => {
                 html! { <SummaryGraph id=id /> }

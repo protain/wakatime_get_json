@@ -1,4 +1,4 @@
-use yew::{html::IntoPropValue, web_sys::Url};
+use yew::{html::IntoPropValue, services::ConsoleService, web_sys::Url};
 use yew_router::{components::RouterAnchor, prelude::*, switch::Permissive};
 
 #[derive(Clone, Debug, Switch)]
@@ -33,9 +33,14 @@ impl AppRoute {
 pub struct PublicUrlSwitch(AppRoute);
 impl PublicUrlSwitch {
     fn base_url() -> Url {
+        ConsoleService::debug(&format!(
+            "base_url - doc uri: {:?}",
+            yew::utils::document().base_uri(),
+        ));
         if let Ok(Some(href)) = yew::utils::document().base_uri() {
             // since this always returns an absolute URL we turn it into `Url`
             // so we can more easily get the path.
+            ConsoleService::info(&format!("href: {:?}", &href));
             Url::new(&href).unwrap()
         } else {
             Url::new("/").unwrap()
@@ -44,11 +49,12 @@ impl PublicUrlSwitch {
 
     fn base_path() -> String {
         let mut path = Self::base_url().pathname();
+        ConsoleService::info(&format!("base_path - 1: {:?}", &path));
         if path.ends_with('/') {
             // pop the trailing slash because AppRoute already accounts for it
             path.pop();
         }
-
+        ConsoleService::info(&format!("base_path - 2: {:?}", &path));
         path
     }
 
@@ -58,10 +64,19 @@ impl PublicUrlSwitch {
 }
 impl Switch for PublicUrlSwitch {
     fn from_route_part<STATE>(part: String, state: Option<STATE>) -> (Option<Self>, Option<STATE>) {
+        ConsoleService::info(&format!("PublicUrlSwitch.from_route_part - 1: {:?}", &part));
         if let Some(part) = part.strip_prefix(&Self::base_path()) {
+            ConsoleService::info(&format!(
+                "PublicUrlSwitch.from_route_part - 1.1: {:?}",
+                &part
+            ));
             let (route, state) = AppRoute::from_route_part(part.to_owned(), state);
             (route.map(Self), state)
         } else {
+            ConsoleService::info(&format!(
+                "PublicUrlSwitch.from_route_part - 1.2: {:?}",
+                &part
+            ));
             (None, None)
         }
     }
