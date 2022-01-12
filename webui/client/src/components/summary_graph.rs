@@ -1,3 +1,4 @@
+use reqwasm::Error;
 //use reqwest::Client;
 use serde::Deserialize;
 use web_sys::{HtmlCanvasElement, HtmlInputElement, HtmlSelectElement};
@@ -125,35 +126,17 @@ impl Component for SummaryGraph {
                             "/wakalog/api/{}/{}/{}",
                             item_type, self.start_date, self.end_date);
                 ctx.link().send_future(async move {
-                    let res: Vec<RankingItem> = reqwasm::http::Request::get(req_url.clone().as_str())
-                        .send().await.unwrap()
-                        .json().await.unwrap();
-                    Msg::GetResult( res )
-                    /*
-                    let req_client = Client::new();
-                    let base_url = format!("http://localhost:8080{}", req_url.clone());
-                    gloo::console::log!(format!("req_url: {:?}", base_url));
-                    let response = req_client.get(base_url.as_str())
-                        .send()
-                        .await
-                        .expect("");
-
-                    let status = response.status();
-                    let resp_byte = response.bytes().await.unwrap().to_vec();
-                    let body = unsafe { String::from_utf8_unchecked(resp_byte) };
-                    gloo::console::info!(&format!(
-                        "response stat: {:?}, body: {:?}",
-                        status,
-                        body
-                    ));
-                    if status.is_success() {
-                        Msg::GetResult(
-                            serde_json::from_str::<Vec<RankingItem>>(&body).unwrap(),
-                        )
-                    } else {
-                        Msg::Error
+                    let res = reqwasm::http::Request::get(req_url.clone().as_str())
+                        .send().await;
+                    if res.is_err() {
+                        return Msg::Error;
                     }
-                    */
+                    let res_json = res.unwrap().json().await;
+                    if res_json.is_err() {
+                        return Msg::Error;
+                    }
+                    let res_json = res_json.unwrap();
+                    Msg::GetResult( res_json )
                 });
             }
             Msg::TypeChanged(itemtype) => {
