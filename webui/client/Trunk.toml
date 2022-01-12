@@ -12,4 +12,4 @@ dist = "dist"
 cargo = false
 
 [[proxy]]
-backend = "http://localhost:5005/api/"
+backend = "http://localhost:5005/wakalog/api/"

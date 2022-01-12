@@ -6,11 +6,11 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 use console_error_panic_hook::set_once as set_panic_hook;
 use wasm_bindgen::prelude::*;
 use web_sys::Element;
-use yew::prelude::*;
-use yew::services::ConsoleService;
-use yew_router::{route::Route, switch::Permissive};
+use yew::{prelude::*, html::Scope};
+use yew_router::prelude::*;
+//use yew_router::{route::Route, switch::Permissive};
 mod switch;
-use switch::{AppAnchor, AppRoute, AppRouter, PublicUrlSwitch};
+use switch::Route;
 
 mod components;
 use components::summary_graph::SummaryGraph;
@@ -20,7 +20,6 @@ pub enum Msg {
 }
 
 pub struct App {
-    link: ComponentLink<Self>,
     navbar_active: bool,
 }
 
@@ -28,43 +27,35 @@ impl Component for App {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         unsafe {
             crate::hide_loading();
         }
         Self {
-            link,
             navbar_active: true,
         }
     }
 
-    fn update(&mut self, _: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         false
     }
 
-    fn change(&mut self, _: Self::Properties) -> bool {
-        false
-    }
-
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <>
-                {self.view_nav()}
+            <BrowserRouter>
+                {self.view_nav(ctx.link())}
                 <main>
-                    <AppRouter
-                        render=AppRouter::render(Self::switch)
-                        redirect=AppRouter::redirect(|route: Route| {
-                            AppRoute::PageNotFound(Permissive(Some(route.route))).into_public()
-                        })
+                    <Switch<Route>
+                        render={Switch::render(Self::switch)}
                     />
                 </main>
-            </>
+            </BrowserRouter>
         }
     }
 }
 
 impl App {
-    fn view_nav(&self) -> Html {
+    fn view_nav(&self, link: &Scope<Self>) -> Html {
         let navbar_active = self.navbar_active;
         let active_class = if navbar_active { "is-active" } else { "" };
         html! {
@@ -73,7 +64,7 @@ impl App {
                     <h1 class="navbar-item is-size-3">{ "Wakatime Summary" }</h1>
 
                     <a role="button"
-                        class=classes!("navbar-burger", "burger", active_class)
+                        class={classes!("navbar-burger", "burger", active_class)}
                         aria-label="menu" aria-expanded="false"
                     >
                         <span aria-hidden="true"></span>
@@ -81,14 +72,14 @@ impl App {
                         <span aria-hidden="true"></span>
                     </a>
                 </div>
-                <div class=classes!("navbar-menu", active_class)>
+                <div class={classes!("navbar-menu", active_class)}>
                     <div class="navbar-start">
-                        <AppAnchor classes="navbar-item" route=AppRoute::Home>
+                        <Link<Route> classes="navbar-item" to={Route::Home}>
                             { "ホーム" }
-                        </AppAnchor>
-                        <AppAnchor classes="navbar-item" route=AppRoute::PostList>
+                        </Link<Route>>
+                        <Link<Route> classes="navbar-item" to={Route::PostList}>
                             { "サマリー表示" }
-                        </AppAnchor>
+                        </Link<Route>>
 
                         <div class="navbar-item has-dropdown is-hoverable">
                             <a class="navbar-link">
@@ -96,9 +87,9 @@ impl App {
                             </a>
                             <div class="navbar-dropdown">
                                 <a class="navbar-item">
-                                    <AppAnchor classes="navbar-item" route=AppRoute::VersionInfo>
+                                    <Link<Route> classes="navbar-item" to={Route::VersionInfo}>
                                     { "バージョン情報" }
-                                    </AppAnchor>
+                                    </Link<Route>>
                                 </a>
                             </div>
                         </div>
@@ -107,26 +98,23 @@ impl App {
             </nav>
         }
     }
-    fn switch(switch: PublicUrlSwitch) -> Html {
-        ConsoleService::info(&format!("AppRoute::switch: {:?}", &switch));
-        match switch.route() {
-            AppRoute::Post(id) => {
-                html! { <SummaryGraph id=id /> }
+    fn switch(switch: &Route) -> Html {
+        gloo::console::info!(&format!("Route::switch: {:?}", &switch));
+        match switch.clone() {
+            Route::Post { id } => {
+                html! { <SummaryGraph id={id} /> }
             }
-            AppRoute::PostListPage(_) => todo!(),
-            AppRoute::PostList => {
+            Route::PostListPage { id } => todo!(),
+            Route::PostList => {
                 html! { <SummaryGraph id=1 /> }
             }
-            AppRoute::VersionInfo => {
+            Route::VersionInfo => {
                 // リダイレクトする場合はweb-sys使う
                 let window = web_sys::window().expect("no window find");
                 let _ = window.location().set_href("https://www.google.co.jp");
                 html! {}
             }
-            AppRoute::PageNotFound(_) => {
-                html! { <div>{ "該当するページが見つかりません。" }</div> }
-            }
-            AppRoute::Home => {
+            Route::Home => {
                 html! {
                     <div class="card">
                         <div class="card-content">
@@ -171,26 +159,28 @@ extern "C" {
 fn main() {
     set_panic_hook();
     unsafe {
-        ConsoleService::log("hide loading start");
+        gloo::console::log!("hide loading start");
         hide_loading();
-        ConsoleService::log("hide loading end");
+        gloo::console::log!("hide loading end");
     }
 
     // Show off some feature flag enabling patterns.
     #[cfg(feature = "demo-abc")]
     {
-        ConsoleService::log("feature `demo-abc` enabled");
+        gloo::console::log!("feature `demo-abc` enabled");
     }
     #[cfg(feature = "demo-xyz")]
     {
-        ConsoleService::log("feature `demo-xyz` enabled");
+        gloo::console::log!("feature `demo-xyz` enabled");
     }
 
-    let element: Element = yew::utils::document()
+    let element: Element = web_sys::window().unwrap()
+        .document().unwrap() 
         .query_selector("#app")
         .expect("can't get body node for rendering")
         .expect("can't unwrap body node");
-    let app = yew::App::<App>::new();
-    app.mount(element);
+    yew::start_app_in_element::<App>(element);
+    //let app = yew::App::<App>::new();
+    //app.mount(element);
     //yew::start_app::<App>();
 }

@@ -1,16 +1,43 @@
-use std::str::FromStr;
-
+//use reqwest::Client;
 use serde::Deserialize;
-use web_sys::HtmlCanvasElement;
-use yew::{
-    format::Nothing,
-    prelude::*,
-    services::{
-        fetch::{FetchTask, Request, Response},
-        ConsoleService, DialogService, FetchService,
-    },
-};
-use yew_components::select::Select;
+use web_sys::{HtmlCanvasElement, HtmlInputElement, HtmlSelectElement};
+use yew::prelude::*;
+//use yew_components::select::Select;
+
+#[derive(PartialEq, Clone, Properties)]
+pub struct SelectProps {
+    pub class: String,
+    pub on_change: Callback<Option<ItemType>>,
+}
+
+#[function_component(SelectItemType)]
+pub fn select_rendered_at(props: &SelectProps) -> Html {
+
+    let on_change = {
+        let on_change = props.on_change.clone();
+        move |e: Event| {
+            let input: HtmlSelectElement = e.target_unchecked_into();
+            let item_type = match input.value().as_str() {
+                "editors" => Some(ItemType::Editors),
+                "languages" => Some(ItemType::Langs),
+                "projects" => Some(ItemType::Projects),
+                _ => None,
+            };
+            on_change.emit(item_type);
+        }
+    };
+    html! {
+        <select
+            class={props.class.clone()}
+            onchange={on_change}
+        >
+            <option value="" selected=true>{ "選択してください" }</option>
+            <option value="editors">{ "エディタ" }</option>
+            <option value="languages">{ "言語" }</option>
+            <option value="projects">{ "プロジェクト" }</option>
+        </select>
+    }
+}
 
 #[derive(PartialEq, Clone)]
 pub enum ItemType {
@@ -32,15 +59,13 @@ impl std::fmt::Display for ItemType {
 pub struct SummaryGraph {
     canvas_ref: NodeRef,
     id: u64,
-    fetch_task: Option<FetchTask>,
     sel_type: Option<ItemType>,
     start_date: String,
     end_date: String,
     render_data: Vec<RankingItem>,
-    link: ComponentLink<Self>,
 }
 
-#[derive(Debug, Properties, Clone)]
+#[derive(PartialEq, Debug, Properties, Clone)]
 pub struct Props {
     pub id: u64,
 }
@@ -64,11 +89,9 @@ impl Component for SummaryGraph {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         Self {
-            link,
-            id: props.id,
-            fetch_task: None,
+            id: ctx.props().id,
             sel_type: None,
             start_date: "".into(),
             end_date: "".into(),
@@ -77,14 +100,14 @@ impl Component for SummaryGraph {
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Exec => {
                 //DialogService::alert(&format!("hoeほげ～: {}", self.id));
                 // validation
                 if self.sel_type.is_none() || self.start_date.len() == 0 || self.end_date.len() == 0
                 {
-                    DialogService::alert("未入力があります");
+                    gloo::dialogs::alert("未入力があります");
                     return false;
                 }
                 unsafe {
@@ -97,32 +120,41 @@ impl Component for SummaryGraph {
                     ItemType::Langs => "langs",
                     ItemType::Projects => "projects",
                 };
-                let get_request = Request::get(&format!(
-                    "/wakalog/api/{}/{}/{}",
-                    item_type, self.start_date, self.end_date
-                ))
-                .body(Nothing)
-                .expect("Failed to build request.");
-                let callback =
-                    self.link
-                        .callback(|response: Response<Result<String, anyhow::Error>>| {
-                            let body = String::from_str(response.body().as_ref().unwrap()).unwrap();
-                            ConsoleService::info(&format!(
-                                "response stat: {:?}, body: {:?}",
-                                response.status(),
-                                body
-                            ));
-                            if response.status().is_success() {
-                                Msg::GetResult(
-                                    serde_json::from_str::<Vec<RankingItem>>(&body).unwrap(),
-                                )
-                            } else {
-                                Msg::Error
-                            }
-                        });
-                let res =
-                    FetchService::fetch(get_request, callback).expect("failed to send request");
-                self.fetch_task = Some(res);
+
+                let req_url = format!(
+                            "/wakalog/api/{}/{}/{}",
+                            item_type, self.start_date, self.end_date);
+                ctx.link().send_future(async move {
+                    let res: Vec<RankingItem> = reqwasm::http::Request::get(req_url.clone().as_str())
+                        .send().await.unwrap()
+                        .json().await.unwrap();
+                    Msg::GetResult( res )
+                    /*
+                    let req_client = Client::new();
+                    let base_url = format!("http://localhost:8080{}", req_url.clone());
+                    gloo::console::log!(format!("req_url: {:?}", base_url));
+                    let response = req_client.get(base_url.as_str())
+                        .send()
+                        .await
+                        .expect("");
+
+                    let status = response.status();
+                    let resp_byte = response.bytes().await.unwrap().to_vec();
+                    let body = unsafe { String::from_utf8_unchecked(resp_byte) };
+                    gloo::console::info!(&format!(
+                        "response stat: {:?}, body: {:?}",
+                        status,
+                        body
+                    ));
+                    if status.is_success() {
+                        Msg::GetResult(
+                            serde_json::from_str::<Vec<RankingItem>>(&body).unwrap(),
+                        )
+                    } else {
+                        Msg::Error
+                    }
+                    */
+                });
             }
             Msg::TypeChanged(itemtype) => {
                 //DialogService::alert(&format!("{}", itemtype));
@@ -130,10 +162,8 @@ impl Component for SummaryGraph {
             }
             Msg::Error => {
                 // 念のため、カバーは外しておく
-                unsafe {
-                    crate::hide_loading();
-                }
-                DialogService::alert("Error")
+                crate::hide_loading();
+                gloo::dialogs::alert("Error");
             }
             Msg::StartDateChanged(s) => {
                 //DialogService::alert(&format!("start_date: {}", s));
@@ -144,9 +174,7 @@ impl Component for SummaryGraph {
                 self.end_date = s.replace("-", "");
             }
             Msg::GetResult(rank) => {
-                unsafe {
-                    crate::hide_loading();
-                }
+                crate::hide_loading();
                 let canvas_opt: Option<HtmlCanvasElement> =
                     self.canvas_ref.cast::<HtmlCanvasElement>();
                 self.render_data = rank;
@@ -157,11 +185,11 @@ impl Component for SummaryGraph {
         false
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+    fn changed(&mut self, ctx: &Context<Self>) -> bool {
         false
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         let types = vec![ItemType::Editors, ItemType::Langs, ItemType::Projects];
         html! {
             <section class="section">
@@ -172,10 +200,15 @@ impl Component for SummaryGraph {
                         <div class="field">
                             <label class="label">{ "種類" }</label>
                             <div class="control">
-                            <Select<ItemType>
+                            <SelectItemType
                                 class="select"
-                                options=types
-                                on_change=self.link.callback(|ev| Msg::TypeChanged(ev)) />
+                                on_change={ctx.link().callback(|ev| {
+                                    if let Some(ty) = ev {
+                                        Msg::TypeChanged(ty)
+                                    } else {
+                                        Msg::Error
+                                    }
+                                })} />
                             </div>
                         </div>
 
@@ -190,9 +223,10 @@ impl Component for SummaryGraph {
                                     class="input"
                                     type="date"
                                     id="start_date"
-                                    oninput=self.link.callback(|e: InputData| {
-                                        Msg::StartDateChanged(e.value)
-                                    })
+                                    oninput={ctx.link().callback(move |e: InputEvent| {
+                                        let input: HtmlInputElement = e.target_unchecked_into();
+                                        Msg::StartDateChanged(input.value())
+                                    })}
                                 />
                                 </div>
                             </div>
@@ -207,7 +241,10 @@ impl Component for SummaryGraph {
                                     class="input"
                                     type="date"
                                     id="end_date"
-                                    oninput=self.link.callback(|e: InputData| Msg::EndDateChanged(e.value)) />
+                                    oninput={ctx.link().callback(move |e: InputEvent| {
+                                        let input: HtmlInputElement = e.target_unchecked_into();
+                                        Msg::EndDateChanged(input.value())
+                                    })} />
                                 </div>
                             </div>
 
@@ -215,7 +252,7 @@ impl Component for SummaryGraph {
                     </div>
                     <div class="column">
 
-                        <button class="button is-primary" onclick=self.link.callback(|_| Msg::Exec )>{ "実行" }</button>
+                        <button class="button is-primary" onclick={ctx.link().callback(|_| Msg::Exec )}>{ "実行" }</button>
 
                     </div>
                 </div>
@@ -224,7 +261,7 @@ impl Component for SummaryGraph {
                 </div>
 
                 <div id="canvas-container">
-                    <canvas width=1200 height=800 ref=self.canvas_ref.clone()>
+                    <canvas width=1200 height=800 ref={self.canvas_ref.clone()}>
                     </canvas>
                 </div>
             </section>
