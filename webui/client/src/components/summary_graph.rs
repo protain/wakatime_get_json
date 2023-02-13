@@ -13,7 +13,6 @@ pub struct SelectProps {
 
 #[function_component(SelectItemType)]
 pub fn select_rendered_at(props: &SelectProps) -> Html {
-
     let on_change = {
         let on_change = props.on_change.clone();
         move |e: Event| {
@@ -59,7 +58,6 @@ impl std::fmt::Display for ItemType {
 
 pub struct SummaryGraph {
     canvas_ref: NodeRef,
-    id: u64,
     sel_type: Option<ItemType>,
     start_date: String,
     end_date: String,
@@ -90,9 +88,8 @@ impl Component for SummaryGraph {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         Self {
-            id: ctx.props().id,
             sel_type: None,
             start_date: "".into(),
             end_date: "".into(),
@@ -111,9 +108,7 @@ impl Component for SummaryGraph {
                     gloo::dialogs::alert("未入力があります");
                     return false;
                 }
-                unsafe {
-                    crate::show_loading();
-                }
+                crate::show_loading();
 
                 // build url
                 let item_type = match self.sel_type.as_ref().unwrap() {
@@ -123,11 +118,13 @@ impl Component for SummaryGraph {
                 };
 
                 let req_url = format!(
-                            "/wakalog/api/{}/{}/{}",
-                            item_type, self.start_date, self.end_date);
+                    "/wakalog/api/{}/{}/{}",
+                    item_type, self.start_date, self.end_date
+                );
                 ctx.link().send_future(async move {
                     let res = reqwasm::http::Request::get(req_url.clone().as_str())
-                        .send().await;
+                        .send()
+                        .await;
                     if res.is_err() {
                         return Msg::Error;
                     }
@@ -136,7 +133,7 @@ impl Component for SummaryGraph {
                         return Msg::Error;
                     }
                     let res_json = res_json.unwrap();
-                    Msg::GetResult( res_json )
+                    Msg::GetResult(res_json)
                 });
             }
             Msg::TypeChanged(itemtype) => {
@@ -168,12 +165,12 @@ impl Component for SummaryGraph {
         false
     }
 
-    fn changed(&mut self, ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
         false
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let types = vec![ItemType::Editors, ItemType::Langs, ItemType::Projects];
+        //let types = vec![ItemType::Editors, ItemType::Langs, ItemType::Projects];
         html! {
             <section class="section">
                 <div class="box">

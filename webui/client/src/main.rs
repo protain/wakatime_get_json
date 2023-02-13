@@ -6,7 +6,7 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 use console_error_panic_hook::set_once as set_panic_hook;
 use wasm_bindgen::prelude::*;
 use web_sys::Element;
-use yew::{prelude::*, html::Scope};
+use yew::{html::Scope, prelude::*};
 use yew_router::prelude::*;
 //use yew_router::{route::Route, switch::Permissive};
 mod switch;
@@ -28,9 +28,7 @@ impl Component for App {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        unsafe {
-            crate::hide_loading();
-        }
+        crate::hide_loading();
         Self {
             navbar_active: true,
         }
@@ -158,11 +156,9 @@ extern "C" {
 
 fn main() {
     set_panic_hook();
-    unsafe {
-        gloo::console::log!("hide loading start");
-        hide_loading();
-        gloo::console::log!("hide loading end");
-    }
+    gloo::console::log!("hide loading start");
+    hide_loading();
+    gloo::console::log!("hide loading end");
 
     // Show off some feature flag enabling patterns.
     #[cfg(feature = "demo-abc")]
@@ -174,13 +170,12 @@ fn main() {
         gloo::console::log!("feature `demo-xyz` enabled");
     }
 
-    let element: Element = web_sys::window().unwrap()
-        .document().unwrap() 
+    let element: Element = web_sys::window()
+        .unwrap()
+        .document()
+        .unwrap()
         .query_selector("#app")
         .expect("can't get body node for rendering")
         .expect("can't unwrap body node");
     yew::start_app_in_element::<App>(element);
-    //let app = yew::App::<App>::new();
-    //app.mount(element);
-    //yew::start_app::<App>();
 }

@@ -1,25 +1,23 @@
 use anyhow;
-use oauth2::{
-    AuthorizationCode,
-    AuthUrl,
-    ClientId,
-    ClientSecret,
-    CsrfToken,
-    RedirectUrl,
-    Scope,
-    TokenResponse,
-    TokenUrl
-};
+use config::Config;
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::http_client;
-use url::Url;
-use std::{ io::{BufRead, BufReader, Write}, net::TcpListener };
+use oauth2::{
+    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope,
+    TokenResponse, TokenUrl,
+};
 use once_cell::sync::Lazy;
-use config::{Config};
+use std::{
+    io::{BufRead, BufReader, Write},
+    net::TcpListener,
+};
+use url::Url;
 
 static SETTINGS: Lazy<Config> = Lazy::new(|| {
     let mut settings = Config::default();
-    settings.merge(config::File::with_name("Settings.toml")).unwrap();
+    settings
+        .merge(config::File::with_name("Settings.toml"))
+        .unwrap();
     settings
 });
 
@@ -29,12 +27,13 @@ fn main() -> anyhow::Result<()> {
     let authorize_url = "https://wakatime.com/oauth/authorize";
     let token_url = "https://wakatime.com/oauth/token";
 
-    let client  = BasicClient::new(
+    let client = BasicClient::new(
         ClientId::new(app_id.into()),
-        Some(ClientSecret::new(secret.into())), 
-        AuthUrl::new(authorize_url.into())?, 
-        Some(TokenUrl::new(token_url.into())?)
-    ).set_redirect_url(
+        Some(ClientSecret::new(secret.into())),
+        AuthUrl::new(authorize_url.into())?,
+        Some(TokenUrl::new(token_url.into())?),
+    )
+    .set_redirect_url(
         RedirectUrl::new("http://localhost:8081".into()).expect("Invalid redirect URL"),
     );
 
@@ -43,13 +42,15 @@ fn main() -> anyhow::Result<()> {
     let (auth_url, csrf_state) = client
         .authorize_url(CsrfToken::new_random)
         // Set the desired scopes.
-        .add_scope(Scope::new("email,read_logged_time,read_stats,read_orgs".to_string()))
+        .add_scope(Scope::new(
+            "email,read_logged_time,read_stats,read_orgs".to_string(),
+        ))
         // Set the PKCE code challenge
         //.set_pkce_challenge(pkce_challenge)
         .url();
 
-    println!("Browse to: {}", auth_url); 
-    
+    println!("Browse to: {}", auth_url);
+
     // A very naive implementation of the redirect server.
     let listener = TcpListener::bind("127.0.0.1:8081").unwrap();
     for stream in listener.incoming() {
@@ -129,8 +130,6 @@ fn main() -> anyhow::Result<()> {
             break;
         }
     }
-
-
 
     Ok(())
 }
